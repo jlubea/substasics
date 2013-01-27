@@ -1,3 +1,6 @@
+Output
+Release
+Debug
 dependencies/boost/bin.v2
 dependencies/boost/stage
 dependencies/log4cplus/msvc8/Win32
