@@ -73,7 +73,7 @@ namespace substasics { namespace platform {
 	{
 		using namespace boost::posix_time;
 		ptime beginClock(microsec_clock::universal_time());
-		while (_started && !_terminated && WaitForSingleObject(_hThread, waitTimeout) != WAIT_OBJECT_0)
+		while ((_op->canceled == false || (_started && !_terminated)) && WaitForSingleObject(_hThread, waitTimeout) != WAIT_OBJECT_0)
 		{
 			if (waitTimeout != INFINITE)
 			{
@@ -127,62 +127,85 @@ namespace substasics { namespace platform {
 
 			void run()
 			{
-				for (size_t i = 0; i < _opQueue->_threads.size(); ++i)
-				{
-					_pendingThreads.push_back(_opQueue->_threads[i]);
-				}
-
-				while (_pendingThreads.size() > 0 || _runningThreads.size() > 0)
+				while (true)
 				{
 					if (this->canceled)
 					{
-						for (size_t i = 0; i < _runningThreads.size(); ++i)
-						{
-							_runningThreads[i]->cancel();
-						}
-						for (size_t i = 0; i < _runningThreads.size(); ++i)
-						{
-							_runningThreads[i]->join();
-						}
-
-						_runningThreads.clear();
-						_pendingThreads.clear();
+						break;
 					}
 					else
 					{
-						size_t maxThreadsToAdd = _opQueue->_maxConcurrentOperations - _runningThreads.size();
-						if (maxThreadsToAdd > 0 && _pendingThreads.size() > 0)
 						{
-							size_t i = 0;
-							for ( ; i < maxThreadsToAdd && i < _pendingThreads.size(); ++i)
+							scoped_lock(_opQueue->_spoolerMutex);
+
+							// wait for an operation to be added
+							if (_runningThreads.size() == 0 && _opQueue->_queuedThreads.size() == 0)
 							{
-								_pendingThreads[i]->start();
-								_runningThreads.push_back(_pendingThreads[i]);
+								size_t completionEventCount = 2;
+								boost::shared_array<HANDLE> _completionEvents(new HANDLE[completionEventCount]);
+								_completionEvents[0] = _opQueue->_terminateSpoolerEvent.get_raw_event();
+								_completionEvents[1] = _opQueue->_addedOperationEvent.get_raw_event();
+
+								_opQueue->_spoolerMutex.unlock();
+								DWORD waitResult = WaitForMultipleObjects(static_cast<DWORD>(completionEventCount), _completionEvents.get(), FALSE, INFINITE);
+								_opQueue->_spoolerMutex.lock();
+
+								// if terminate is requested, break
+								if (waitResult == WAIT_OBJECT_0) break;
+								// else an operation was added
 							}
-							_pendingThreads.erase(_pendingThreads.begin(), _pendingThreads.begin()+i);
+
+							// queue up operations to run
+							while (_runningThreads.size() < _opQueue->_maxConcurrentOperations && _opQueue->_queuedThreads.size() > 0)
+							{
+								thread *t = _opQueue->_queuedThreads.back();
+								_opQueue->_queuedThreads.pop_back();
+						
+								t->start();
+								_runningThreads.push_back(t);
+							}
 						}
 
-						// wait for 1 thread to complete
-						boost::shared_array<HANDLE> _runningThreadCompletionEvents(new HANDLE[_runningThreads.size()]);
+						// wait for any of the threads to complete, or wait for the max concurrent operation
+						// count to change (where we may be allowed to queue up additional operations)
+						size_t completionEventCount = _runningThreads.size() + 3;
+						boost::shared_array<HANDLE> _completionEvents(new HANDLE[completionEventCount]);
 						for (size_t i = 0; i < _runningThreads.size(); ++i)
 						{
-							_runningThreadCompletionEvents[i] = _runningThreads[i]->get_raw_thread();
+							_completionEvents[i] = _runningThreads[i]->get_raw_thread();
 						}
+						_completionEvents[_runningThreads.size()]     = _opQueue->_terminateSpoolerEvent.get_raw_event();
+						_completionEvents[_runningThreads.size() + 1] = _opQueue->_concurrentOperationCountChangedEvent.get_raw_event();
+						_completionEvents[_runningThreads.size() + 2] = _opQueue->_addedOperationEvent.get_raw_event();
 
-						DWORD waitResult = WaitForMultipleObjects(static_cast<DWORD>(_runningThreads.size()), _runningThreadCompletionEvents.get(), FALSE, INFINITE);
-						// a thread has ended, so remove it from the running list
-						if (waitResult >= WAIT_OBJECT_0 && waitResult < WAIT_OBJECT_0+_runningThreads.size())
+						DWORD waitResult = WaitForMultipleObjects(static_cast<DWORD>(completionEventCount), _completionEvents.get(), FALSE, INFINITE);
+						// if a thread has ended
+						if (waitResult >= WAIT_OBJECT_0 && waitResult < (WAIT_OBJECT_0 + _runningThreads.size()))
 						{
 							_runningThreads.erase(_runningThreads.begin() + (waitResult - WAIT_OBJECT_0));
 						}
+						// if termination requested
+						else if (waitResult == (WAIT_OBJECT_0 + _runningThreads.size()))
+						{
+							break;
+						}
 					}
 				}
+
+				for (size_t i = 0; i < _runningThreads.size(); ++i)
+				{
+					_runningThreads[i]->cancel();
+				}
+				for (size_t i = 0; i < _runningThreads.size(); ++i)
+				{
+					_runningThreads[i]->join();
+				}
+				_runningThreads.clear();
 			}
 
 		private:
 			operation_queue *_opQueue;
 			std::vector<thread *> _runningThreads;
-			std::vector<thread *> _pendingThreads;
 		};
 	}
 
@@ -195,28 +218,17 @@ namespace substasics { namespace platform {
 
 	operation_queue::~operation_queue()
 	{
-		for (size_t i = 0; i < _threads.size(); ++i)
-		{
-			delete _threads[i];
-		}
-		_threads.clear();
-	
-		if (_spooler)
-		{
-			delete _spooler;
-			_spooler = NULL;
-		}
-
-		if (_spoolerThread)
-		{
-			delete _spoolerThread;
-			_spoolerThread = NULL;
-		}
+		reset();
 	}
 
 	void operation_queue::add(runnable *op, bool ownsOp)
 	{
-		_threads.push_back(new thread(op, ownsOp));
+		scoped_lock lock(_spoolerMutex);
+
+		thread *t = new thread(op, ownsOp);
+		_threads.push_back(t);
+		_queuedThreads.push_back(t);
+		_addedOperationEvent.notify();
 	}
 
 	void operation_queue::start()
@@ -239,7 +251,6 @@ namespace substasics { namespace platform {
 		{
 			_threads[i]->cancel();
 		}
-
 		wait_for_all();
 
 		for (size_t i = 0; i < _threads.size(); ++i)
@@ -248,17 +259,34 @@ namespace substasics { namespace platform {
 		}
 		_threads.clear();
 	
+		if (_spoolerThread)
+		{
+			_spoolerThread->cancel();
+			_terminateSpoolerEvent.notify();
+			_spoolerThread->join();
+
+			delete _spoolerThread;
+			_spoolerThread = NULL;
+		}
+
 		if (_spooler)
 		{
 			delete _spooler;
 			_spooler = NULL;
 		}
+	}
 
-		if (_spoolerThread)
-		{
-			delete _spoolerThread;
-			_spoolerThread = NULL;
-		}
+	size_t operation_queue::get_max_concurrent_operation_count() const
+	{
+		return _maxConcurrentOperations;
+	}
+
+	void operation_queue::set_max_concurrent_operation_count(size_t maxConcurrentOperations)
+	{
+		scoped_lock lock(_spoolerMutex);
+
+		_maxConcurrentOperations = max(1, maxConcurrentOperations);
+		_concurrentOperationCountChangedEvent.notify();
 	}
 
 	void operation_queue::wait_for_all()
@@ -266,11 +294,6 @@ namespace substasics { namespace platform {
 		for (size_t i = 0; i < _threads.size(); ++i)
 		{
 			_threads[i]->join();
-		}
-		
-		if (_spoolerThread != NULL)
-		{
-			_spoolerThread->join();
 		}
 	}
 

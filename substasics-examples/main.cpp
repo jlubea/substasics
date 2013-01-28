@@ -97,6 +97,32 @@ void demo_operation_queue()
 	opQueue.wait_for_all();
 }
 
+void demo_operation_queue_with_concurrent_operation_count_change()
+{
+	std::cout << std::endl;
+	std::cout << "demo_operation_queue_with_concurrent_operation_count_change:" << std::endl;
+
+	int concurrentOperationCount = 1;
+	sp::operation_queue opQueue(concurrentOperationCount);
+	
+	// notice that you can add operations even after the operation_queue is started
+	opQueue.start();
+
+	for (int i = 0; i < 16; ++i)
+	{
+		opQueue.add(new demo_runnable(i + 1));
+	}
+
+	for (int i = 0; i < 3; ++i)
+	{
+		Sleep(750);
+		concurrentOperationCount *= 2;
+		opQueue.set_max_concurrent_operation_count(concurrentOperationCount);
+	}
+
+	opQueue.wait_for_all();
+}
+
 void demo_parallel_for_each()
 {
 	std::cout << std::endl;
@@ -126,6 +152,7 @@ int main(int argc, char **argv)
 	demo_exceptions();
 	demo_text();
 	demo_operation_queue();
+	demo_operation_queue_with_concurrent_operation_count_change();
 	demo_parallel_for_each();
 
 	return 0;

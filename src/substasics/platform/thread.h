@@ -7,6 +7,7 @@
 
 #include "substasics/platform/exports.h"
 #include "substasics/platform/signal.h"
+#include "substasics/platform/mutex.h"
 #include "substasics/platform/exceptions.h"
 
 #include <vector>
@@ -73,6 +74,9 @@ namespace substasics { namespace platform {
 		void start();
 		void reset();
 
+		size_t get_max_concurrent_operation_count() const;
+		void set_max_concurrent_operation_count(size_t maxConcurrentOperations);
+
 		void wait_for_all();
 
 		const std::vector<thread *> &get_threads() const;
@@ -80,9 +84,15 @@ namespace substasics { namespace platform {
 	private:
 		size_t _maxConcurrentOperations;
 		std::vector<thread *> _threads;
-
+		std::vector<thread *> _queuedThreads;
+		
 		detail::operation_queue_spooler *_spooler;
 		thread *_spoolerThread;
+		signal _concurrentOperationCountChangedEvent;
+		signal _addedOperationEvent;
+		signal _terminateSpoolerEvent;
+
+		mutex _spoolerMutex;
 	};
 
 
