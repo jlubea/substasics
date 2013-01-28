@@ -3,7 +3,7 @@
 
 
 #if defined(_LIB) || defined(STATIC_LIB)
-# define UTILS_API
+# define SUBSTASICS_API
 #else
 # ifdef SUBSTASICS_EXPORTS
 #  ifdef _WIN32
@@ -11,7 +11,7 @@
 #  endif
 # else
 #  ifdef _WIN32
-#   define SUBSTASICSUTILS_API __declspec (dllimport)
+#   define SUBSTASICS_API __declspec (dllimport)
 #  endif
 # endif
 #endif

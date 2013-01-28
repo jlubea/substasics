@@ -9,17 +9,16 @@
 
 namespace substasics { namespace platform {
 
-	exception::exception(const std::string &func, const std::string &format, ...)
+	exception::exception(const std::string &func, const char *format, ...)
 		: base_type(func)
 	{
 		va_list args;
-		int len;
 
-		va_start( args, format );
+		va_start(args, format);
 		// _vscprintf doesn't count terminating NULL char
-		len = _vscprintf(format.c_str(), args) + 1;
+		int len = _vscprintf(format, args) + 1;
 		boost::shared_array<char> buffer(new char[len]);
-		vsprintf_s(buffer.get(), len, format.c_str(), args);
+		vsprintf_s(buffer.get(), len, format, args);
 		m_what = func + ": " + buffer.get();
 	}
 

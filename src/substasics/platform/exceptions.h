@@ -17,7 +17,7 @@ public:
 	typedef std::runtime_error base_type;
 	
 public:
-	exception(const std::string &func, const std::string &format, ...);
+	exception(const std::string &func, const char *format, ...);
 	virtual ~exception() throw();
 
 	virtual const char *what() const throw();
