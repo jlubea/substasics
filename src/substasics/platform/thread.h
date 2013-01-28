@@ -121,7 +121,7 @@ namespace substasics { namespace platform {
 		_Fn1 _func;
 	};
 
-	template <typename _Ctx, class _Collection, class _Fn1>
+	template <class _Collection, class _Fn1>
 	void parallel_for_each(uint32_t maxConcurrentOperations, _Collection &contextObjects, _Fn1 func)
 	{
 		size_t threadCount = contextObjects.size();
@@ -139,18 +139,18 @@ namespace substasics { namespace platform {
 			operation_queue opQueue(maxConcurrentOperations);
 			for (_Collection::iterator iter = contextObjects.begin(); iter != contextObjects.end(); ++iter)
 			{
-				opQueue.add(new lambda_runnable<_Ctx, _Fn1>(*iter, func));
+				opQueue.add(new lambda_runnable<_Collection::value_type, _Fn1>(*iter, func));
 			}
 			opQueue.start();
 			opQueue.wait_for_all();
 		}
 	}
 
-	template <typename _Ctx, class _Collection, class _Fn1>
+	template <class _Collection, class _Fn1>
 	void parallel_for_each(_Collection &contextObjects, _Fn1 func)
 	{
 		size_t threadCount = contextObjects.size();
-		parallel_for_each<_Ctx, _Collection, _Fn1>(threadCount, contextObjects, func);
+		parallel_for_each<_Collection, _Fn1>(threadCount, contextObjects, func);
 	}
 
 }

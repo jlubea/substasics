@@ -134,7 +134,7 @@ void demo_parallel_for_each()
 		ids.push_back(i + 1);
 	}
 
-	sp::parallel_for_each<int>(
+	sp::parallel_for_each(
 		5,
 		ids,
 		[=](int id)
