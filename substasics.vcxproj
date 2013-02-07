@@ -89,6 +89,7 @@
     <ClCompile Include="src\substasics\log\trace.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\substasics\dependency_injection\kernel.h" />
     <ClInclude Include="src\substasics\platform\exceptions.h" />
     <ClInclude Include="src\substasics\platform\exports.h" />
     <ClInclude Include="src\substasics\platform\mutex.h" />

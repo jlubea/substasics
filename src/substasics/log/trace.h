@@ -1,5 +1,5 @@
-#ifndef LOG_SCOPED_TRACE_H
-#define LOG_SCOPED_TRACE_H
+#ifndef SUBSTASICS_LOG_TRACE_H
+#define SUBSTASICS_LOG_TRACE_H
 
 #include "substasics/platform/exports.h"
 

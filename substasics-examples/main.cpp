@@ -4,12 +4,14 @@
 #include "substasics/platform/signal.h"
 #include "substasics/platform/text.h"
 #include "substasics/log/trace.h"
+#include "substasics/dependency_injection/kernel.h"
 
 #include <iostream>
 #include <string>
 #include <vector>
 
 namespace sp = substasics::platform;
+namespace di = substasics::dependency_injection;
 
 void demo_exceptions()
 {
@@ -147,13 +149,87 @@ void demo_parallel_for_each()
 	);
 }
 
+
+class ISampleOne
+{
+public:
+	static const std::string InterfaceKey;
+	virtual std::string GetName() = 0;
+};
+const std::string ISampleOne::InterfaceKey = "ISampleOne";
+
+
+class SampleImplOne : public ISampleOne
+{
+public:
+	virtual std::string GetName() { return "SampleImplOne"; }
+};
+
+class SampleImplTwo : public ISampleOne
+{
+public:
+	virtual std::string GetName() { return "SampleImplTwo"; }
+};
+
+
+class ISingletonOne
+{
+public:
+	static const std::string InterfaceKey;
+	virtual std::string GetName() = 0;
+};
+const std::string ISingletonOne::InterfaceKey = "ISingletonOne";
+
+class SingletonImplOne : public ISingletonOne
+{
+public:
+	virtual std::string GetName() { return "SingletonImplOne"; }
+};
+
+class SingletonImplTwo : public ISingletonOne
+{
+public:
+	virtual std::string GetName() { return "SingletonImplTwo"; }
+};
+
+
+void demo_dependency_injection()
+{
+	std::cout << "demo_dependency_injection:" << std::endl;
+
+	di::kernel kernel;
+
+	kernel.bind<SampleImplOne>(ISampleOne::InterfaceKey,		boost::shared_ptr< di::object_factory<SampleImplOne> >(new di::object_factory<SampleImplOne>()));
+	kernel.bind<SingletonImplOne>(ISingletonOne::InterfaceKey,	boost::shared_ptr< di::singleton_factory<SingletonImplOne> >(new di::singleton_factory<SingletonImplOne>()));
+
+	boost::shared_ptr<ISampleOne> sample1 = kernel.get<ISampleOne>(ISampleOne::InterfaceKey);
+	boost::shared_ptr<ISingletonOne> singleton1 = kernel.get<ISingletonOne>(ISingletonOne::InterfaceKey);
+	std::cout << sample1->GetName() << std::endl;
+	std::cout << singleton1->GetName() << std::endl;
+
+	kernel.bind<SampleImplTwo>(ISampleOne::InterfaceKey,		boost::shared_ptr< di::object_factory<SampleImplTwo> >(new di::object_factory<SampleImplTwo>()));
+
+	sample1 = kernel.get<ISampleOne>(ISampleOne::InterfaceKey);
+	singleton1 = kernel.get<ISingletonOne>(ISingletonOne::InterfaceKey);
+	std::cout << sample1->GetName() << std::endl;
+	std::cout << singleton1->GetName() << std::endl;
+
+	kernel.bind<SingletonImplTwo>(ISingletonOne::InterfaceKey,	boost::shared_ptr< di::singleton_factory<SingletonImplTwo> >(new di::singleton_factory<SingletonImplTwo>()));
+	sample1 = kernel.get<ISampleOne>(ISampleOne::InterfaceKey);
+	singleton1 = kernel.get<ISingletonOne>(ISingletonOne::InterfaceKey);
+	std::cout << sample1->GetName() << std::endl;
+	std::cout << singleton1->GetName() << std::endl;
+}
+
 int main(int argc, char **argv)
 {
-	demo_exceptions();
-	demo_text();
-	demo_operation_queue();
-	demo_operation_queue_with_concurrent_operation_count_change();
-	demo_parallel_for_each();
+	//demo_exceptions();
+	//demo_text();
+	//demo_operation_queue();
+	//demo_operation_queue_with_concurrent_operation_count_change();
+	//demo_parallel_for_each();
+
+	demo_dependency_injection();
 
 	return 0;
 }
