@@ -5,7 +5,7 @@
 #include "substasics/platform/mutex.h"
 #include <boost/shared_ptr.hpp>
 #include <boost/any.hpp>
-#include <map>
+#include <vector>
 
 namespace substasics { namespace dependency_injection {
 
@@ -60,30 +60,64 @@ namespace substasics { namespace dependency_injection {
 	};
 
 
+	namespace detail {
+
+		struct type_and_factory
+		{
+			type_and_factory(const type_info &type_, boost::any factory_) :
+				type(type_),
+				factory(factory_)
+			{
+			}
+
+			const type_info &type;
+			boost::any factory;
+		};
+
+	}
+
 	class kernel
 	{
 	public:
-		template <class _GeneratedType>
-		void bind(const std::string &key, boost::shared_ptr< iobject_factory<_GeneratedType> > factory)
+		template <class _InterfaceType, class _GeneratedType>
+		void bind(iobject_factory<_GeneratedType> *factory)
 		{
-			_factories[key] = factory;
+			bind<_InterfaceType, _GeneratedType>(boost::shared_ptr< iobject_factory<_GeneratedType> >(factory));
+		}
+
+		template <class _InterfaceType, class _GeneratedType>
+		void bind(boost::shared_ptr< iobject_factory<_GeneratedType> > factory)
+		{
+			for (std::vector<detail::type_and_factory>::iterator it = _factories.begin(); it != _factories.end(); it++)
+			{
+				if (it->type == typeid(_InterfaceType))
+				{
+					it->factory = factory;
+					return;
+				}
+			}
+
+			detail::type_and_factory type_and_factory(typeid(_InterfaceType), factory);
+			_factories.push_back(type_and_factory);
 		}
 
 		template <class _InterfaceType>
-		boost::shared_ptr<_InterfaceType> get(const std::string &key)
+		boost::shared_ptr<_InterfaceType> get()
 		{
-			const std::map<std::string, boost::any>::iterator it = _factories.find(key);
-			if (it == _factories.end())
+			for (std::vector<detail::type_and_factory>::iterator it = _factories.begin(); it != _factories.end(); it++)
 			{
-				return boost::shared_ptr<_InterfaceType>();
+				if (it->type == typeid(_InterfaceType))
+				{
+					boost::shared_ptr< iobject_factory<_InterfaceType> > factory = *boost::unsafe_any_cast< boost::shared_ptr< iobject_factory<_InterfaceType> > >(&it->factory);
+					return factory->get();
+				}
 			}
 
-			boost::shared_ptr< iobject_factory<_InterfaceType> > factory = *boost::unsafe_any_cast< boost::shared_ptr< iobject_factory<_InterfaceType> > >(&it->second);
-			return factory->get();
+			return boost::shared_ptr<_InterfaceType>();
 		}
 
 	private:
-		std::map<std::string, boost::any> _factories;
+		std::vector<detail::type_and_factory> _factories;
 	};
 
 }

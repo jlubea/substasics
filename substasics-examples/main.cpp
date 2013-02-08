@@ -199,24 +199,24 @@ void demo_dependency_injection()
 
 	di::kernel kernel;
 
-	kernel.bind<SampleImplOne>(ISampleOne::InterfaceKey,		boost::shared_ptr< di::object_factory<SampleImplOne> >(new di::object_factory<SampleImplOne>()));
-	kernel.bind<SingletonImplOne>(ISingletonOne::InterfaceKey,	boost::shared_ptr< di::singleton_factory<SingletonImplOne> >(new di::singleton_factory<SingletonImplOne>()));
+	kernel.bind<ISampleOne, SampleImplOne>(new di::object_factory<SampleImplOne>());
+	kernel.bind<ISingletonOne, SingletonImplOne>(new di::singleton_factory<SingletonImplOne>());
 
-	boost::shared_ptr<ISampleOne> sample1 = kernel.get<ISampleOne>(ISampleOne::InterfaceKey);
-	boost::shared_ptr<ISingletonOne> singleton1 = kernel.get<ISingletonOne>(ISingletonOne::InterfaceKey);
+	boost::shared_ptr<ISampleOne> sample1 = kernel.get<ISampleOne>();
+	boost::shared_ptr<ISingletonOne> singleton1 = kernel.get<ISingletonOne>();
 	std::cout << sample1->GetName() << std::endl;
 	std::cout << singleton1->GetName() << std::endl;
 
-	kernel.bind<SampleImplTwo>(ISampleOne::InterfaceKey,		boost::shared_ptr< di::object_factory<SampleImplTwo> >(new di::object_factory<SampleImplTwo>()));
+	kernel.bind<ISampleOne, SampleImplTwo>(new di::object_factory<SampleImplTwo>());
 
-	sample1 = kernel.get<ISampleOne>(ISampleOne::InterfaceKey);
-	singleton1 = kernel.get<ISingletonOne>(ISingletonOne::InterfaceKey);
+	sample1 = kernel.get<ISampleOne>();
+	singleton1 = kernel.get<ISingletonOne>();
 	std::cout << sample1->GetName() << std::endl;
 	std::cout << singleton1->GetName() << std::endl;
 
-	kernel.bind<SingletonImplTwo>(ISingletonOne::InterfaceKey,	boost::shared_ptr< di::singleton_factory<SingletonImplTwo> >(new di::singleton_factory<SingletonImplTwo>()));
-	sample1 = kernel.get<ISampleOne>(ISampleOne::InterfaceKey);
-	singleton1 = kernel.get<ISingletonOne>(ISingletonOne::InterfaceKey);
+	kernel.bind<ISingletonOne, SingletonImplTwo>(new di::singleton_factory<SingletonImplTwo>());
+	sample1 = kernel.get<ISampleOne>();
+	singleton1 = kernel.get<ISingletonOne>();
 	std::cout << sample1->GetName() << std::endl;
 	std::cout << singleton1->GetName() << std::endl;
 }
