@@ -221,6 +221,32 @@ void demo_dependency_injection()
 	std::cout << singleton1->GetName() << std::endl;
 }
 
+void demo_global_kernel_dependency_injection()
+{
+	std::cout << "demo_global_kernel_dependency_injection:" << std::endl;
+
+	di::global_kernel::Instance().bind<ISampleOne, SampleImplOne>(new di::object_factory<SampleImplOne>());
+	di::global_kernel::Instance().bind<ISingletonOne, SingletonImplOne>(new di::singleton_factory<SingletonImplOne>());
+
+	boost::shared_ptr<ISampleOne> sample1 = di::global_kernel::Instance().get<ISampleOne>();
+	boost::shared_ptr<ISingletonOne> singleton1 = di::global_kernel::Instance().get<ISingletonOne>();
+	std::cout << sample1->GetName() << std::endl;
+	std::cout << singleton1->GetName() << std::endl;
+
+	di::global_kernel::Instance().bind<ISampleOne, SampleImplTwo>(new di::object_factory<SampleImplTwo>());
+
+	sample1 = di::global_kernel::Instance().get<ISampleOne>();
+	singleton1 = di::global_kernel::Instance().get<ISingletonOne>();
+	std::cout << sample1->GetName() << std::endl;
+	std::cout << singleton1->GetName() << std::endl;
+
+	di::global_kernel::Instance().bind<ISingletonOne, SingletonImplTwo>(new di::singleton_factory<SingletonImplTwo>());
+	sample1 = di::global_kernel::Instance().get<ISampleOne>();
+	singleton1 = di::global_kernel::Instance().get<ISingletonOne>();
+	std::cout << sample1->GetName() << std::endl;
+	std::cout << singleton1->GetName() << std::endl;
+}
+
 int main(int argc, char **argv)
 {
 	//demo_exceptions();
@@ -230,6 +256,7 @@ int main(int argc, char **argv)
 	//demo_parallel_for_each();
 
 	demo_dependency_injection();
+	demo_global_kernel_dependency_injection();
 
 	return 0;
 }

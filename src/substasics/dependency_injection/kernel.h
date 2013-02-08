@@ -76,6 +76,9 @@ namespace substasics { namespace dependency_injection {
 
 	}
 
+	//
+	// Use this class to facilitate dependency injection
+	//
 	class kernel
 	{
 	public:
@@ -118,6 +121,54 @@ namespace substasics { namespace dependency_injection {
 
 	private:
 		std::vector<detail::type_and_factory> _factories;
+	};
+
+	//
+	// Use this class wherever a global Singleton-style kernel is preferred
+	//
+	class SUBSTASICS_API global_kernel : private boost::noncopyable
+	{
+	private:
+		global_kernel()
+		{
+		}
+
+	public:
+		static global_kernel &Instance()
+		{
+			if (__instance == NULL)
+			{
+				substasics::platform::scoped_lock lock(__initializationMutex);
+				if (__instance == NULL)
+				{
+					__instance = new global_kernel();
+				}
+			}
+			return *__instance;
+		}
+
+		template <class _InterfaceType, class _GeneratedType>
+		void bind(iobject_factory<_GeneratedType> *factory)
+		{
+			_kernel.bind<_InterfaceType, _GeneratedType>(factory);
+		}
+
+		template <class _InterfaceType, class _GeneratedType>
+		void bind(boost::shared_ptr< iobject_factory<_GeneratedType> > factory)
+		{
+			_kernel.bind<_InterfaceType, _GeneratedType>(factory);
+		}
+
+		template <class _InterfaceType>
+		boost::shared_ptr<_InterfaceType> get()
+		{
+			return _kernel.get<_InterfaceType>();
+		}
+
+	private:
+		kernel _kernel;
+		static global_kernel *__instance;
+		static substasics::platform::mutex __initializationMutex;
 	};
 
 }

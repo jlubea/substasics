@@ -81,6 +81,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\substasics\dependency_injection\kernel.cpp" />
     <ClCompile Include="src\substasics\platform\exceptions.cpp" />
     <ClCompile Include="src\substasics\platform\mutex.cpp" />
     <ClCompile Include="src\substasics\platform\signal.cpp" />
