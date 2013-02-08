@@ -150,43 +150,38 @@ void demo_parallel_for_each()
 }
 
 
-class ISampleOne
+class ISample
 {
 public:
-	static const std::string InterfaceKey;
 	virtual std::string GetName() = 0;
 };
-const std::string ISampleOne::InterfaceKey = "ISampleOne";
 
-
-class SampleImplOne : public ISampleOne
+class SampleImplOne : public ISample
 {
 public:
 	virtual std::string GetName() { return "SampleImplOne"; }
 };
 
-class SampleImplTwo : public ISampleOne
+class SampleImplTwo : public ISample
 {
 public:
 	virtual std::string GetName() { return "SampleImplTwo"; }
 };
 
 
-class ISingletonOne
+class ISingleton
 {
 public:
-	static const std::string InterfaceKey;
 	virtual std::string GetName() = 0;
 };
-const std::string ISingletonOne::InterfaceKey = "ISingletonOne";
 
-class SingletonImplOne : public ISingletonOne
+class SingletonImplOne : public ISingleton
 {
 public:
 	virtual std::string GetName() { return "SingletonImplOne"; }
 };
 
-class SingletonImplTwo : public ISingletonOne
+class SingletonImplTwo : public ISingleton
 {
 public:
 	virtual std::string GetName() { return "SingletonImplTwo"; }
@@ -199,24 +194,24 @@ void demo_dependency_injection()
 
 	di::kernel kernel;
 
-	kernel.bind<ISampleOne, SampleImplOne>(new di::object_factory<SampleImplOne>());
-	kernel.bind<ISingletonOne, SingletonImplOne>(new di::singleton_factory<SingletonImplOne>());
+	kernel.bind<ISample, SampleImplOne>(new di::object_factory<SampleImplOne>());
+	kernel.bind<ISingleton, SingletonImplOne>(new di::singleton_factory<SingletonImplOne>());
 
-	boost::shared_ptr<ISampleOne> sample1 = kernel.get<ISampleOne>();
-	boost::shared_ptr<ISingletonOne> singleton1 = kernel.get<ISingletonOne>();
+	boost::shared_ptr<ISample> sample1 = kernel.get<ISample>();
+	boost::shared_ptr<ISingleton> singleton1 = kernel.get<ISingleton>();
 	std::cout << sample1->GetName() << std::endl;
 	std::cout << singleton1->GetName() << std::endl;
 
-	kernel.bind<ISampleOne, SampleImplTwo>(new di::object_factory<SampleImplTwo>());
+	kernel.bind<ISample, SampleImplTwo>(new di::object_factory<SampleImplTwo>());
 
-	sample1 = kernel.get<ISampleOne>();
-	singleton1 = kernel.get<ISingletonOne>();
+	sample1 = kernel.get<ISample>();
+	singleton1 = kernel.get<ISingleton>();
 	std::cout << sample1->GetName() << std::endl;
 	std::cout << singleton1->GetName() << std::endl;
 
-	kernel.bind<ISingletonOne, SingletonImplTwo>(new di::singleton_factory<SingletonImplTwo>());
-	sample1 = kernel.get<ISampleOne>();
-	singleton1 = kernel.get<ISingletonOne>();
+	kernel.bind<ISingleton, SingletonImplTwo>(new di::singleton_factory<SingletonImplTwo>());
+	sample1 = kernel.get<ISample>();
+	singleton1 = kernel.get<ISingleton>();
 	std::cout << sample1->GetName() << std::endl;
 	std::cout << singleton1->GetName() << std::endl;
 }
@@ -225,24 +220,24 @@ void demo_global_kernel_dependency_injection()
 {
 	std::cout << "demo_global_kernel_dependency_injection:" << std::endl;
 
-	di::global_kernel::Instance().bind<ISampleOne, SampleImplOne>(new di::object_factory<SampleImplOne>());
-	di::global_kernel::Instance().bind<ISingletonOne, SingletonImplOne>(new di::singleton_factory<SingletonImplOne>());
+	di::global_kernel::Instance().bind<ISample, SampleImplOne>(new di::object_factory<SampleImplOne>());
+	di::global_kernel::Instance().bind<ISingleton, SingletonImplOne>(new di::singleton_factory<SingletonImplOne>());
 
-	boost::shared_ptr<ISampleOne> sample1 = di::global_kernel::Instance().get<ISampleOne>();
-	boost::shared_ptr<ISingletonOne> singleton1 = di::global_kernel::Instance().get<ISingletonOne>();
+	boost::shared_ptr<ISample> sample1 = di::global_kernel::Instance().get<ISample>();
+	boost::shared_ptr<ISingleton> singleton1 = di::global_kernel::Instance().get<ISingleton>();
 	std::cout << sample1->GetName() << std::endl;
 	std::cout << singleton1->GetName() << std::endl;
 
-	di::global_kernel::Instance().bind<ISampleOne, SampleImplTwo>(new di::object_factory<SampleImplTwo>());
+	di::global_kernel::Instance().bind<ISample, SampleImplTwo>(new di::object_factory<SampleImplTwo>());
 
-	sample1 = di::global_kernel::Instance().get<ISampleOne>();
-	singleton1 = di::global_kernel::Instance().get<ISingletonOne>();
+	sample1 = di::global_kernel::Instance().get<ISample>();
+	singleton1 = di::global_kernel::Instance().get<ISingleton>();
 	std::cout << sample1->GetName() << std::endl;
 	std::cout << singleton1->GetName() << std::endl;
 
-	di::global_kernel::Instance().bind<ISingletonOne, SingletonImplTwo>(new di::singleton_factory<SingletonImplTwo>());
-	sample1 = di::global_kernel::Instance().get<ISampleOne>();
-	singleton1 = di::global_kernel::Instance().get<ISingletonOne>();
+	di::global_kernel::Instance().bind<ISingleton, SingletonImplTwo>(new di::singleton_factory<SingletonImplTwo>());
+	sample1 = di::global_kernel::Instance().get<ISample>();
+	singleton1 = di::global_kernel::Instance().get<ISingleton>();
 	std::cout << sample1->GetName() << std::endl;
 	std::cout << singleton1->GetName() << std::endl;
 }
